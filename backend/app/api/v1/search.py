@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, String, cast
-import asyncio
 
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import UserOut
-from .users import get_current_user, _with_counts
+from .users import get_current_user, _batch_with_counts
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -39,6 +38,5 @@ async def search_users(
         query = query.order_by(User.created_at.desc())
 
     query = query.offset(skip).limit(limit)
-    users = await db.scalars(query)
-    results = await asyncio.gather(*[_with_counts(u, db) for u in users])
-    return list(results)
+    users = list(await db.scalars(query))
+    return await _batch_with_counts(users, db)

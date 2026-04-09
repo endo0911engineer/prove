@@ -51,7 +51,7 @@ async def check_can_view(viewer: User, target_user: User, db: AsyncSession) -> N
 
 
 async def _with_counts(user: User, db: AsyncSession) -> UserOut:
-    """フォロワー数・フォロー数を付与して UserOut を返す"""
+    """フォロワー数・フォロー数を付与して UserOut を返す（単一ユーザー用）"""
     follower_count = await db.scalar(
         select(func.count()).where(Follow.following_id == user.id)
     ) or 0
@@ -63,6 +63,36 @@ async def _with_counts(user: User, db: AsyncSession) -> UserOut:
         "follower_count": follower_count,
         "following_count": following_count,
     })
+
+
+async def _batch_with_counts(users: list[User], db: AsyncSession) -> list[UserOut]:
+    """複数ユーザーのフォロワー数・フォロー数を2クエリで一括取得する（N+1対策）"""
+    if not users:
+        return []
+    user_ids = [u.id for u in users]
+
+    follower_rows = await db.execute(
+        select(Follow.following_id, func.count().label("cnt"))
+        .where(Follow.following_id.in_(user_ids))
+        .group_by(Follow.following_id)
+    )
+    follower_map: dict[str, int] = {row.following_id: row.cnt for row in follower_rows}
+
+    following_rows = await db.execute(
+        select(Follow.follower_id, func.count().label("cnt"))
+        .where(Follow.follower_id.in_(user_ids))
+        .group_by(Follow.follower_id)
+    )
+    following_map: dict[str, int] = {row.follower_id: row.cnt for row in following_rows}
+
+    return [
+        UserOut.model_validate({
+            **{c.name: getattr(u, c.name) for c in u.__table__.columns},
+            "follower_count": follower_map.get(u.id, 0),
+            "following_count": following_map.get(u.id, 0),
+        })
+        for u in users
+    ]
 
 
 @router.get("/me", response_model=UserOut)

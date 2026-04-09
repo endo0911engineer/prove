@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usersApi } from "../api/users";
 import { useAuthStore } from "../stores/authStore";
@@ -17,13 +18,26 @@ function buildUrl(url: string) {
   return url.startsWith("http") ? url : `${getApiUrl()}${url}`;
 }
 
-const PRESET_TAGS = [
-  "朝活", "夜活", "読書", "プログラミング", "英語", "筋トレ",
-  "副業", "起業", "ダイエット", "瞑想", "ランニング", "料理",
-  "投資", "デザイン", "音楽",
+const PRESET_TAG_KEYS: { apiValue: string; i18nKey: string }[] = [
+  { apiValue: "朝活",         i18nKey: "search.tags.morningActivity" },
+  { apiValue: "夜活",         i18nKey: "search.tags.eveningActivity" },
+  { apiValue: "読書",         i18nKey: "search.tags.reading" },
+  { apiValue: "プログラミング", i18nKey: "search.tags.programming" },
+  { apiValue: "英語",         i18nKey: "search.tags.english" },
+  { apiValue: "筋トレ",       i18nKey: "search.tags.workout" },
+  { apiValue: "副業",         i18nKey: "search.tags.sideJob" },
+  { apiValue: "起業",         i18nKey: "search.tags.entrepreneurship" },
+  { apiValue: "ダイエット",    i18nKey: "search.tags.diet" },
+  { apiValue: "瞑想",         i18nKey: "search.tags.meditation" },
+  { apiValue: "ランニング",    i18nKey: "search.tags.running" },
+  { apiValue: "料理",         i18nKey: "search.tags.cooking" },
+  { apiValue: "投資",         i18nKey: "search.tags.investment" },
+  { apiValue: "デザイン",     i18nKey: "search.tags.design" },
+  { apiValue: "音楽",         i18nKey: "search.tags.music" },
 ];
 
 export default function EditProfileScreen() {
+  const { t } = useTranslation();
   const { data: user } = useCurrentUser();
   const [bio, setBio] = useState("");
   const [goal, setGoal] = useState("");
@@ -48,13 +62,13 @@ export default function EditProfileScreen() {
       setUser(updatedUser);
       queryClient.setQueryData(["me"], updatedUser);
     },
-    onError: () => Alert.alert("エラー", "アイコンの更新に失敗しました"),
+    onError: () => Alert.alert(t("editProfile.errorTitle"), t("editProfile.avatarError")),
   });
 
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("権限が必要です", "カメラロールへのアクセスを許可してください");
+      Alert.alert(t("editProfile.permissionRequired"), t("editProfile.cameraRollPermission"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -77,9 +91,9 @@ export default function EditProfileScreen() {
   };
 
   const addCustomTag = () => {
-    const t = customTag.trim();
-    if (!t || tags.includes(t) || tags.length >= 5) return;
-    setTags((prev) => [...prev, t]);
+    const trimmed = customTag.trim();
+    if (!trimmed || tags.includes(trimmed) || tags.length >= 5) return;
+    setTags((prev) => [...prev, trimmed]);
     setCustomTag("");
   };
 
@@ -92,13 +106,12 @@ export default function EditProfileScreen() {
       tags,
     }),
     onSuccess: (updatedUser) => {
-      // Zustand ストアを即時更新（画面遷移前に反映）
       setUser(updatedUser);
       queryClient.setQueryData(["me"], updatedUser);
       queryClient.invalidateQueries({ queryKey: ["me"] });
       router.back();
     },
-    onError: () => Alert.alert("エラー", "更新に失敗しました"),
+    onError: () => Alert.alert(t("editProfile.errorTitle"), t("editProfile.updateError")),
   });
 
   return (
@@ -106,13 +119,13 @@ export default function EditProfileScreen() {
       {/* ヘッダー */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-800">
         <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-gray-400">キャンセル</Text>
+          <Text className="text-gray-400">{t("editProfile.cancel")}</Text>
         </TouchableOpacity>
-        <Text className="font-black text-white text-base">プロフィールを編集</Text>
+        <Text className="font-black text-white text-base">{t("editProfile.title")}</Text>
         <TouchableOpacity onPress={() => save()} disabled={isPending}>
           {isPending
             ? <ActivityIndicator size="small" color="#fff" />
-            : <Text className="font-bold text-white">完了</Text>
+            : <Text className="font-bold text-white">{t("editProfile.done")}</Text>
           }
         </TouchableOpacity>
       </View>
@@ -139,15 +152,17 @@ export default function EditProfileScreen() {
               }
             </View>
           </TouchableOpacity>
-          <Text className="text-xs text-gray-400 mt-2">タップして変更</Text>
+          <Text className="text-xs text-gray-400 mt-2">{t("editProfile.tapToChange")}</Text>
         </View>
 
         {/* 目標（自由入力） */}
         <View className="mb-6">
-          <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">目標</Text>
+          <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+            {t("editProfile.goalLabel")}
+          </Text>
           <TextInput
             className="bg-gray-900 border border-gray-800 rounded-2xl px-4 py-4 text-sm text-white"
-            placeholder="例: 毎日英語を1時間勉強して1年でTOEIC900点を取る"
+            placeholder={t("editProfile.goalPlaceholder")}
             placeholderTextColor="#555"
             value={goal}
             onChangeText={setGoal}
@@ -160,10 +175,12 @@ export default function EditProfileScreen() {
 
         {/* Bio */}
         <View className="mb-6">
-          <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">一言コメント</Text>
+          <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+            {t("editProfile.bioLabel")}
+          </Text>
           <TextInput
             className="bg-gray-900 border border-gray-800 rounded-2xl px-4 py-4 text-sm text-white"
-            placeholder="例: 毎日コードを書いて成長する 💻"
+            placeholder={t("editProfile.bioPlaceholder")}
             placeholderTextColor="#555"
             value={bio}
             onChangeText={setBio}
@@ -176,34 +193,42 @@ export default function EditProfileScreen() {
 
         {/* タグ */}
         <View className="mb-8">
-          <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">タグ</Text>
-          <Text className="text-xs text-gray-300 mb-3">最大5つまで選択できます（選択中: {tags.length}/5）</Text>
+          <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">
+            {t("editProfile.tagsLabel")}
+          </Text>
+          <Text className="text-xs text-gray-300 mb-3">
+            {t("editProfile.tagsHint", { count: tags.length })}
+          </Text>
 
           {/* 選択中タグ */}
           {tags.length > 0 && (
             <View className="flex-row flex-wrap gap-2 mb-3">
-              {tags.map((tag) => (
-                <TouchableOpacity
-                  key={tag}
-                  onPress={() => toggleTag(tag)}
-                  className="flex-row items-center gap-1 bg-white rounded-full px-3 py-1.5"
-                >
-                  <Text className="text-black text-xs font-bold">#{tag}</Text>
-                  <Text className="text-gray-300 text-xs">×</Text>
-                </TouchableOpacity>
-              ))}
+              {tags.map((tag) => {
+                const preset = PRESET_TAG_KEYS.find((k) => k.apiValue === tag);
+                const label = preset ? t(preset.i18nKey) : tag;
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    onPress={() => toggleTag(tag)}
+                    className="flex-row items-center gap-1 bg-white rounded-full px-3 py-1.5"
+                  >
+                    <Text className="text-black text-xs font-bold">#{label}</Text>
+                    <Text className="text-gray-300 text-xs">×</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 
           {/* プリセットタグ */}
           <View className="flex-row flex-wrap gap-2 mb-3">
-            {PRESET_TAGS.filter((t) => !tags.includes(t)).map((tag) => (
+            {PRESET_TAG_KEYS.filter(({ apiValue }) => !tags.includes(apiValue)).map(({ apiValue, i18nKey }) => (
               <TouchableOpacity
-                key={tag}
-                onPress={() => toggleTag(tag)}
+                key={apiValue}
+                onPress={() => toggleTag(apiValue)}
                 className="bg-gray-900 border border-gray-800 rounded-full px-3 py-1.5"
               >
-                <Text className="text-gray-400 text-xs">#{tag}</Text>
+                <Text className="text-gray-400 text-xs">#{t(i18nKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -212,7 +237,7 @@ export default function EditProfileScreen() {
           <View className="flex-row gap-2">
             <TextInput
               className="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white"
-              placeholder="カスタムタグを追加..."
+              placeholder={t("editProfile.customTagPlaceholder")}
               placeholderTextColor="#555"
               value={customTag}
               onChangeText={setCustomTag}
@@ -223,7 +248,7 @@ export default function EditProfileScreen() {
               onPress={addCustomTag}
               className="bg-gray-800 rounded-xl px-4 items-center justify-center"
             >
-              <Text className="text-white font-bold text-sm">追加</Text>
+              <Text className="text-white font-bold text-sm">{t("editProfile.addTag")}</Text>
             </TouchableOpacity>
           </View>
         </View>

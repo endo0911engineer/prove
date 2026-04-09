@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.models.follow import Follow
 from app.models.user import User
 from app.schemas.user import UserOut
-from .users import get_current_user, _with_counts
+from .users import get_current_user, _batch_with_counts
 
 router = APIRouter(tags=["follows"])
 
@@ -64,10 +64,10 @@ async def get_followers(
         .offset(skip)
         .limit(limit)
     )
-    users = await db.scalars(
+    users = list(await db.scalars(
         select(User).where(User.id.in_(list(follower_ids)))
-    )
-    return [await _with_counts(u, db) for u in users]
+    ))
+    return await _batch_with_counts(users, db)
 
 
 @router.get("/users/{user_id}/following", response_model=list[UserOut])
@@ -84,10 +84,10 @@ async def get_following(
         .offset(skip)
         .limit(limit)
     )
-    users = await db.scalars(
+    users = list(await db.scalars(
         select(User).where(User.id.in_(list(following_ids)))
-    )
-    return [await _with_counts(u, db) for u in users]
+    ))
+    return await _batch_with_counts(users, db)
 
 
 @router.get("/users/{user_id}/is_following")
