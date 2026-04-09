@@ -6,9 +6,11 @@ import {
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 import { useCreatePost, useTodayStatus } from "../../hooks/usePosts";
 
 export default function PostScreen() {
+  const { t } = useTranslation();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [text, setText] = useState("");
   const { mutate: createPost, isPending } = useCreatePost();
@@ -19,13 +21,11 @@ export default function PostScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("権限が必要です", "カメラロールへのアクセスを許可してください");
+      Alert.alert(t("post.permissionRequired"), t("post.cameraRollPermission"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
-      allowsEditing: true,
-      aspect: [1, 1],
       quality: 0.8,
     });
     if (!result.canceled) setImageUri(result.assets[0].uri);
@@ -34,42 +34,37 @@ export default function PostScreen() {
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("権限が必要です", "カメラへのアクセスを許可してください");
+      Alert.alert(t("post.permissionRequired"), t("post.cameraPermission"));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
       quality: 0.8,
     });
     if (!result.canceled) setImageUri(result.assets[0].uri);
   };
 
   const handleSubmit = () => {
-    if (!imageUri) {
-      Alert.alert("画像を選択してください", "努力の証拠となる画像は必須です");
-      return;
-    }
+    if (!imageUri) return;
     const formData = new FormData();
     formData.append("image", { uri: imageUri, type: "image/jpeg", name: "photo.jpg" } as any);
     if (text.trim()) formData.append("text", text.trim());
 
     createPost(formData, {
       onSuccess: () => {
-        Alert.alert("投稿完了！", "今日の努力を記録しました 🔥", [
-          { text: "OK", onPress: () => router.replace("/(tabs)") },
+        Alert.alert(t("post.successTitle"), t("post.successMessage"), [
+          { text: t("common.ok"), onPress: () => router.replace("/(tabs)") },
         ]);
       },
       onError: (err: any) => {
         const detail = err?.response?.data?.detail ?? "";
         const msg = detail === "Already posted today"
-          ? "今日はすでに投稿済みです"
+          ? t("post.alreadyPosted")
           : detail.includes("hasn't started yet")
-          ? `まだ投稿時間ではありません（${todayStatus?.postingWindowStart ?? 0}:00〜）`
+          ? t("post.windowNotStarted", { start: todayStatus?.postingWindowStart ?? 0 })
           : detail.includes("has closed")
-          ? `投稿時間が終了しました（〜${todayStatus?.postingWindowEnd ?? 23}:00）`
-          : "投稿に失敗しました。もう一度試してください";
-        Alert.alert("エラー", msg);
+          ? t("post.windowEnded", { end: todayStatus?.postingWindowEnd ?? 23 })
+          : t("post.postFailed");
+        Alert.alert(t("common.error"), msg);
       },
     });
   };
@@ -78,13 +73,13 @@ export default function PostScreen() {
     return (
       <SafeAreaView className="flex-1 bg-black items-center justify-center px-6">
         <Text className="text-5xl mb-4">✅</Text>
-        <Text className="text-xl font-bold text-white text-center mb-2">今日の記録は完了しています</Text>
-        <Text className="text-gray-300 text-center mb-8">明日また頑張りましょう！</Text>
+        <Text className="text-xl font-bold text-white text-center mb-2">{t("post.completedTitle")}</Text>
+        <Text className="text-gray-300 text-center mb-8">{t("post.completedMessage")}</Text>
         <TouchableOpacity
           className="border border-gray-700 rounded-xl px-8 py-3"
           onPress={() => router.push("/(tabs)/feed")}
         >
-          <Text className="text-gray-300 font-medium">フィードを見る</Text>
+          <Text className="text-gray-300 font-medium">{t("post.viewFeed")}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -94,78 +89,99 @@ export default function PostScreen() {
     return (
       <SafeAreaView className="flex-1 bg-black items-center justify-center px-6">
         <Text className="text-5xl mb-4">😞</Text>
-        <Text className="text-xl font-bold text-white text-center mb-2">今日の投稿時間が終了しました</Text>
+        <Text className="text-xl font-bold text-white text-center mb-2">{t("post.endedTitle")}</Text>
         <Text className="text-gray-300 text-center mb-2">
-          投稿可能時間: {todayStatus?.postingWindowStart}:00〜{todayStatus?.postingWindowEnd}:00
+          {t("home.postingWindow", { start: todayStatus?.postingWindowStart, end: todayStatus?.postingWindowEnd })}
         </Text>
-        <Text className="text-gray-400 text-sm text-center mb-8">明日また頑張りましょう</Text>
+        <Text className="text-gray-400 text-sm text-center mb-8">{t("post.endedMessage")}</Text>
       </SafeAreaView>
     );
   }
 
+  // ── ステップ1: 画像選択 ──────────────────────────
+  if (!imageUri) {
+    return (
+      <SafeAreaView className="flex-1 bg-black">
+        <View className="px-5 pt-4 pb-2">
+          <Text className="text-2xl font-black text-white">{t("post.title")}</Text>
+          <Text className="text-gray-400 text-sm mt-1">{t("post.selectPhoto")}</Text>
+        </View>
+
+        <View className="flex-1 px-5 justify-center gap-4">
+          <TouchableOpacity
+            className="bg-gray-900 border-2 border-gray-700 rounded-3xl items-center justify-center py-14"
+            onPress={takePhoto}
+            activeOpacity={0.7}
+          >
+            <Text className="text-5xl mb-4">📸</Text>
+            <Text className="text-white font-bold text-lg">{t("post.takePhoto")}</Text>
+            <Text className="text-gray-400 text-sm mt-1">{t("post.takePhotoSub")}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="bg-gray-900 border border-gray-800 rounded-3xl items-center justify-center py-10"
+            onPress={pickImage}
+            activeOpacity={0.7}
+          >
+            <Text className="text-4xl mb-3">🖼️</Text>
+            <Text className="text-white font-semibold text-base">{t("post.selectFromLibrary")}</Text>
+            <Text className="text-gray-400 text-sm mt-1">{t("post.selectFromLibrarySub")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ── ステップ2: コメント入力＋投稿 ───────────────
   return (
     <SafeAreaView className="flex-1 bg-black">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <View className="px-5 pt-4 pb-8 flex-1">
-            <Text className="text-2xl font-black text-white mb-6">今日の努力を記録</Text>
+            <Text className="text-2xl font-black text-white mb-4">{t("post.title")}</Text>
 
-            {/* 画像選択エリア */}
-            {imageUri ? (
-              <View className="mb-4">
-                <Image
-                  source={{ uri: imageUri }}
-                  className="w-full rounded-2xl"
-                  style={{ aspectRatio: 1 }}
-                />
-                <TouchableOpacity className="mt-2 items-center" onPress={() => setImageUri(null)}>
-                  <Text className="text-gray-400 text-sm">画像を変更する</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View className="mb-4">
-                <TouchableOpacity
-                  className="border-2 border-dashed border-gray-800 rounded-2xl items-center justify-center py-12 mb-3 bg-gray-900"
-                  onPress={pickImage}
-                >
-                  <Text className="text-4xl mb-3">📷</Text>
-                  <Text className="font-bold text-gray-300">ライブラリから選択</Text>
-                  <Text className="text-gray-400 text-sm mt-1">※ 画像は必須です</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="border border-gray-800 bg-gray-900 rounded-xl py-3 items-center"
-                  onPress={takePhoto}
-                >
-                  <Text className="text-gray-300 font-medium">📸 カメラで撮影</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            {/* 画像プレビュー */}
+            <View className="mb-5">
+              <Image
+                source={{ uri: imageUri }}
+                className="w-full rounded-2xl"
+                style={{ aspectRatio: 4 / 3 }}
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                className="mt-2 items-center py-1"
+                onPress={() => setImageUri(null)}
+              >
+                <Text className="text-gray-400 text-sm">{t("post.retakePhoto")}</Text>
+              </TouchableOpacity>
+            </View>
 
-            {/* テキスト入力 */}
-            <Text className="text-sm font-medium text-gray-300 mb-2">一言コメント（任意）</Text>
+            {/* コメント入力 */}
+            <Text className="text-sm font-semibold text-gray-300 mb-2">{t("post.commentLabel")}</Text>
             <TextInput
-              className="border border-gray-800 bg-gray-900 rounded-xl px-4 py-3 text-base text-white mb-6"
-              placeholder="今日の努力を一言で..."
+              className="border border-gray-700 bg-gray-900 rounded-2xl px-4 py-3 text-base text-white mb-6"
+              placeholder={t("post.commentPlaceholder")}
               placeholderTextColor="#555"
               multiline
-              numberOfLines={3}
               value={text}
               onChangeText={setText}
-              style={{ minHeight: 80, textAlignVertical: "top" }}
+              style={{ minHeight: 90, textAlignVertical: "top" }}
+              scrollEnabled={false}
             />
 
             {/* 投稿ボタン */}
             <TouchableOpacity
-              className={`rounded-2xl py-5 items-center ${imageUri ? "bg-white" : "bg-gray-900"}`}
+              className="bg-white rounded-2xl py-5 items-center"
               onPress={handleSubmit}
-              disabled={isPending || !imageUri}
+              disabled={isPending}
             >
               {isPending ? (
-                <ActivityIndicator color={imageUri ? "#000" : "#555"} />
+                <ActivityIndicator color="#000" />
               ) : (
-                <Text className={`font-bold text-lg ${imageUri ? "text-black" : "text-gray-300"}`}>
-                  投稿する 🔥
-                </Text>
+                <Text className="font-bold text-lg text-black">{t("post.submitButton")}</Text>
               )}
             </TouchableOpacity>
           </View>

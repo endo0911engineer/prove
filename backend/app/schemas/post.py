@@ -13,6 +13,7 @@ class PostCreate(BaseModel):
 class PostOut(BaseModel):
     id: str
     user_id: str
+    goal_id: str | None = None
     user: UserOut
     image_url: str
     text: str | None

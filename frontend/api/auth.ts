@@ -42,4 +42,11 @@ export const authApi = {
     const res = await apiClient.get<User>("/api/v1/users/me");
     return res.data;
   },
+
+  logout: async (refreshToken: string): Promise<void> => {
+    // エラーでもローカルのログアウト処理を止めないため例外を握りつぶす
+    try {
+      await apiClient.post("/api/v1/auth/logout", { refresh_token: refreshToken });
+    } catch {}
+  },
 };

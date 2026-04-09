@@ -33,3 +33,4 @@ class User(Base):
     posts: Mapped[list["Post"]] = relationship("Post", back_populates="user")
     reactions: Mapped[list["Reaction"]] = relationship("Reaction", back_populates="user")
     achievements: Mapped[list["GoalAchievement"]] = relationship("GoalAchievement", back_populates="user", order_by="GoalAchievement.achieved_at.desc()")
+    goals: Mapped[list["Goal"]] = relationship("Goal", back_populates="user", order_by="Goal.created_at.desc()")

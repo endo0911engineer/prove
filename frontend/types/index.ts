@@ -18,9 +18,20 @@ export interface User {
   createdAt: string;
 }
 
+export interface Goal {
+  id: string;
+  userId: string;
+  title: string;
+  isActive: boolean;
+  achievedAt: string | null;
+  createdAt: string;
+  postCount: number;
+}
+
 export interface Post {
   id: string;
   userId: string;
+  goalId: string | null;
   user: User;
   imageUrl: string;
   text?: string;

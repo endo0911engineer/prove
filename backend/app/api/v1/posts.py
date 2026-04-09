@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -7,10 +7,13 @@ from datetime import datetime, timedelta, timezone
 from app.db.session import get_db
 from app.models.post import Post, PostStatus
 from app.models.comment import Comment
+from app.models.goal import Goal
 from app.models.user import User
 from app.schemas.post import PostOut
 from app.core.storage import upload_image
-from .users import get_current_user
+from app.core.file_validation import validate_image_bytes
+from app.core.limiter import limiter
+from .users import get_current_user, check_can_view
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -76,7 +79,9 @@ async def today_status(
 
 
 @router.post("", response_model=PostOut, status_code=201)
+@limiter.limit("5/5minute")
 async def create_post(
+    request: Request,
     image: UploadFile = File(...),
     text: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
@@ -109,10 +114,17 @@ async def create_post(
         raise HTTPException(status_code=400, detail="Already posted today")
 
     image_bytes = await image.read()
+    validate_image_bytes(image_bytes)
     image_url = upload_image(image_bytes, image.content_type or "image/jpeg")
+
+    # アクティブなGoalを取得
+    active_goal = await db.scalar(
+        select(Goal).where(Goal.user_id == current_user.id, Goal.is_active == True)
+    )
 
     post = Post(
         user_id=current_user.id,
+        goal_id=active_goal.id if active_goal else None,
         image_url=image_url,
         text=text,
         status=PostStatus.POSTED,
@@ -151,7 +163,11 @@ async def create_post(
 
 
 @router.get("/{post_id}", response_model=PostOut)
-async def get_post(post_id: str, db: AsyncSession = Depends(get_db)):
+async def get_post(
+    post_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     post = await db.scalar(
         select(Post)
         .options(
@@ -163,4 +179,5 @@ async def get_post(post_id: str, db: AsyncSession = Depends(get_db)):
     )
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+    await check_can_view(current_user, post.user, db)
     return post

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -53,11 +53,16 @@ async def unfollow_user(
 @router.get("/users/{user_id}/followers", response_model=list[UserOut])
 async def get_followers(
     user_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     follower_ids = await db.scalars(
-        select(Follow.follower_id).where(Follow.following_id == user_id)
+        select(Follow.follower_id)
+        .where(Follow.following_id == user_id)
+        .offset(skip)
+        .limit(limit)
     )
     users = await db.scalars(
         select(User).where(User.id.in_(list(follower_ids)))
@@ -68,11 +73,16 @@ async def get_followers(
 @router.get("/users/{user_id}/following", response_model=list[UserOut])
 async def get_following(
     user_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     following_ids = await db.scalars(
-        select(Follow.following_id).where(Follow.follower_id == user_id)
+        select(Follow.following_id)
+        .where(Follow.follower_id == user_id)
+        .offset(skip)
+        .limit(limit)
     )
     users = await db.scalars(
         select(User).where(User.id.in_(list(following_ids)))

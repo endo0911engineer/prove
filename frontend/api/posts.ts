@@ -2,8 +2,8 @@ import { apiClient } from "./client";
 import { Comment, Post } from "../types";
 
 export const postsApi = {
-  getFeed: async (): Promise<Post[]> => {
-    const res = await apiClient.get<Post[]>("/api/v1/feed");
+  getFeed: async (skip = 0, limit = 20): Promise<Post[]> => {
+    const res = await apiClient.get<Post[]>("/api/v1/feed", { params: { skip, limit } });
     return res.data;
   },
 
@@ -25,8 +25,10 @@ export const postsApi = {
     return res.data;
   },
 
-  getUserPosts: async (userId: string): Promise<Post[]> => {
-    const res = await apiClient.get<Post[]>(`/api/v1/users/${userId}/posts`);
+  getUserPosts: async (userId: string, skip = 0, limit = 20): Promise<Post[]> => {
+    const res = await apiClient.get<Post[]>(`/api/v1/users/${userId}/posts`, {
+      params: { skip, limit },
+    });
     return res.data;
   },
 

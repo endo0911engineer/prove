@@ -16,29 +16,23 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import { apiClient } from "../../api/client";
 import { getApiUrl } from "../../api/client";
+import { useTranslation } from "react-i18next";
 import { useToggleReaction, useComments, useAddComment } from "../../hooks/usePosts";
 import { useAuthStore } from "../../stores/authStore";
 import { Avatar } from "../../components/Avatar";
 import { Post, ReactionType } from "../../types";
 
-const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
-  { type: "KEEP_GOING", emoji: "🔥", label: "継続すごい" },
-  { type: "NICE_EFFORT", emoji: "💪", label: "ナイス努力" },
-  { type: "INSPIRED", emoji: "⚡", label: "刺激もらった" },
+const REACTION_TYPES: { type: ReactionType; emoji: string; labelKey: string }[] = [
+  { type: "KEEP_GOING", emoji: "🔥", labelKey: "postDetail.reactionKeepGoing" },
+  { type: "NICE_EFFORT", emoji: "💪", labelKey: "postDetail.reactionNiceEffort" },
+  { type: "INSPIRED", emoji: "⚡", labelKey: "postDetail.reactionInspired" },
 ];
-
-function timeAgo(dateStr: string) {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return "たった今";
-  if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
-  return `${Math.floor(diff / 86400)}日前`;
-}
 
 const buildImageUrl = (url: string) =>
   url.startsWith("http") ? url : `${getApiUrl()}${url}`;
 
 export default function PostDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { mutate: toggleReaction, isPending: reactionPending } = useToggleReaction();
   const { mutate: addComment, isPending: commentPending } = useAddComment(id ?? "");
@@ -91,7 +85,7 @@ export default function PostDetailScreen() {
           >
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text className="font-black text-white text-base">投稿</Text>
+          <Text className="font-black text-white text-base">{t("postDetail.title")}</Text>
         </View>
 
         <ScrollView>
@@ -120,7 +114,7 @@ export default function PostDetailScreen() {
 
           {/* リアクション */}
           <View className="px-4 pt-4 pb-2 flex-row gap-2 flex-wrap">
-            {REACTIONS.map((r) => {
+            {REACTION_TYPES.map((r) => {
               const count = post.reactions.filter((rx) => rx.type === r.type).length;
               const isMyReaction = myReaction?.type === r.type;
               return (
@@ -140,7 +134,7 @@ export default function PostDetailScreen() {
                   <Text
                     className={`text-sm font-medium ${isMyReaction ? "text-black" : "text-gray-300"}`}
                   >
-                    {r.label}
+                    {t(r.labelKey)}
                   </Text>
                   {count > 0 && (
                     <Text
@@ -164,13 +158,19 @@ export default function PostDetailScreen() {
             </View>
           ) : null}
 
-          <Text className="text-xs text-gray-400 px-4 pb-4">{timeAgo(post.createdAt)}</Text>
+          <Text className="text-xs text-gray-400 px-4 pb-4">{(() => {
+            const diff = Math.floor((Date.now() - new Date(post.createdAt).getTime()) / 1000);
+            if (diff < 60) return t("common.justNow");
+            if (diff < 3600) return t("common.minutesAgo", { count: Math.floor(diff / 60) });
+            if (diff < 86400) return t("common.hoursAgo", { count: Math.floor(diff / 3600) });
+            return t("common.daysAgo", { count: Math.floor(diff / 86400) });
+          })()}</Text>
 
           {/* コメント一覧 */}
           <View className="border-t border-gray-900 pt-4 pb-2">
             {comments.length === 0 ? (
               <Text className="text-gray-600 text-sm text-center py-4">
-                最初のコメントをしよう
+                {t("postDetail.firstComment")}
               </Text>
             ) : (
               comments.map((c) => (
@@ -181,7 +181,13 @@ export default function PostDetailScreen() {
                   <View className="flex-1">
                     <View className="flex-row items-baseline gap-2">
                       <Text className="font-bold text-white text-sm">@{c.user.username}</Text>
-                      <Text className="text-gray-600 text-xs">{timeAgo(c.createdAt)}</Text>
+                      <Text className="text-gray-600 text-xs">{(() => {
+                        const diff = Math.floor((Date.now() - new Date(c.createdAt).getTime()) / 1000);
+                        if (diff < 60) return t("common.justNow");
+                        if (diff < 3600) return t("common.minutesAgo", { count: Math.floor(diff / 60) });
+                        if (diff < 86400) return t("common.hoursAgo", { count: Math.floor(diff / 3600) });
+                        return t("common.daysAgo", { count: Math.floor(diff / 86400) });
+                      })()}</Text>
                     </View>
                     <Text className="text-gray-200 text-sm mt-0.5 leading-5">{c.text}</Text>
                   </View>
@@ -200,7 +206,7 @@ export default function PostDetailScreen() {
           <TextInput
             ref={inputRef}
             className="flex-1 bg-gray-900 rounded-2xl px-4 py-2.5 text-sm text-white"
-            placeholder="コメントを追加..."
+            placeholder={t("postDetail.commentPlaceholder")}
             placeholderTextColor="#555"
             value={commentText}
             onChangeText={setCommentText}

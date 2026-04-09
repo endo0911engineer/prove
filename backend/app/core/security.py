@@ -1,3 +1,5 @@
+import hashlib
+import uuid
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -29,7 +31,7 @@ def create_access_token(subject: str) -> str:
 def create_refresh_token(subject: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     return jwt.encode(
-        {"sub": subject, "exp": expire, "type": "refresh"},
+        {"sub": subject, "exp": expire, "type": "refresh", "jti": str(uuid.uuid4())},
         settings.secret_key,
         algorithm=settings.algorithm,
     )
@@ -45,3 +47,12 @@ def decode_refresh_token(token: str) -> str:
     if payload.get("type") != "refresh":
         raise JWTError("Not a refresh token")
     return payload["sub"]
+
+
+def hash_token(token: str) -> str:
+    """リフレッシュトークンをSHA-256でハッシュ化してDBに保存する"""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def refresh_token_expires_at() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)

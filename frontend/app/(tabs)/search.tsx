@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { usersApi } from "../../api/users";
 import { useIsFollowing, useFollow } from "../../hooks/useFollow";
@@ -13,15 +14,30 @@ import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { Avatar } from "../../components/Avatar";
 import { User } from "../../types";
 
-const PRESET_TAGS = [
-  "朝活", "夜活", "読書", "プログラミング", "英語", "筋トレ",
-  "副業", "起業", "ダイエット", "瞑想", "ランニング", "料理", "投資", "デザイン", "音楽",
+// タグのAPIキー（日本語、DBに保存される値）→ 翻訳キーのマッピング
+const TAG_KEYS: { apiValue: string; i18nKey: string }[] = [
+  { apiValue: "朝活",       i18nKey: "search.tags.morningActivity" },
+  { apiValue: "夜活",       i18nKey: "search.tags.eveningActivity" },
+  { apiValue: "読書",       i18nKey: "search.tags.reading" },
+  { apiValue: "プログラミング", i18nKey: "search.tags.programming" },
+  { apiValue: "英語",       i18nKey: "search.tags.english" },
+  { apiValue: "筋トレ",     i18nKey: "search.tags.workout" },
+  { apiValue: "副業",       i18nKey: "search.tags.sideJob" },
+  { apiValue: "起業",       i18nKey: "search.tags.entrepreneurship" },
+  { apiValue: "ダイエット",  i18nKey: "search.tags.diet" },
+  { apiValue: "瞑想",       i18nKey: "search.tags.meditation" },
+  { apiValue: "ランニング",  i18nKey: "search.tags.running" },
+  { apiValue: "料理",       i18nKey: "search.tags.cooking" },
+  { apiValue: "投資",       i18nKey: "search.tags.investment" },
+  { apiValue: "デザイン",   i18nKey: "search.tags.design" },
+  { apiValue: "音楽",       i18nKey: "search.tags.music" },
 ];
 
 function FollowBtn({ userId }: { userId: string }) {
   const { data: me } = useCurrentUser();
   const { data: isFollowing } = useIsFollowing(userId);
   const { follow, unfollow } = useFollow(userId);
+  const { t } = useTranslation();
   if (me?.id === userId || isFollowing === undefined) return null;
   return (
     <TouchableOpacity
@@ -31,7 +47,7 @@ function FollowBtn({ userId }: { userId: string }) {
       }`}
     >
       <Text className={`text-xs font-bold ${isFollowing ? "text-gray-300" : "text-black"}`}>
-        {isFollowing ? "フォロー中" : "フォロー"}
+        {isFollowing ? t("common.following") : t("common.follow")}
       </Text>
     </TouchableOpacity>
   );
@@ -53,7 +69,7 @@ function UserRow({ user }: { user: User }) {
         ) : null}
         <View className="flex-row items-center gap-3 mt-1 flex-wrap">
           <Text className="text-gray-400 text-xs" numberOfLines={1}>{user.goal}</Text>
-          <Text className="text-xs font-bold text-orange-500">🔥 {user.currentStreak}日</Text>
+          <Text className="text-xs font-bold text-orange-500">🔥 {user.currentStreak}</Text>
         </View>
         {user.tags.length > 0 && (
           <View className="flex-row flex-wrap gap-1 mt-1">
@@ -71,22 +87,23 @@ function UserRow({ user }: { user: User }) {
 }
 
 export default function SearchScreen() {
+  const { t } = useTranslation();
   const [q, setQ] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedApiTags, setSelectedApiTags] = useState<string[]>([]);
   const [sort, setSort] = useState<"streak" | "new">("streak");
   const { data: me } = useCurrentUser();
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+  const toggleTag = (apiValue: string) => {
+    setSelectedApiTags((prev) =>
+      prev.includes(apiValue) ? prev.filter((t) => t !== apiValue) : [...prev, apiValue]
     );
   };
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ["search-users", q, selectedTags, sort],
+    queryKey: ["search-users", q, selectedApiTags, sort],
     queryFn: () => usersApi.searchUsers({
       q: q || undefined,
-      tags: selectedTags.length > 0 ? selectedTags : undefined,
+      tags: selectedApiTags.length > 0 ? selectedApiTags : undefined,
       sort,
     }),
     enabled: !!me,
@@ -101,7 +118,7 @@ export default function SearchScreen() {
           <Ionicons name="search-outline" size={16} color="#888" />
           <TextInput
             className="flex-1 text-sm text-white"
-            placeholder="ユーザー名で検索..."
+            placeholder={t("search.placeholder")}
             placeholderTextColor="#555"
             value={q}
             onChangeText={setQ}
@@ -124,7 +141,7 @@ export default function SearchScreen() {
             className={`px-4 py-1.5 rounded-full ${sort === s ? "bg-white" : "bg-gray-900 border border-gray-800"}`}
           >
             <Text className={`text-xs font-bold ${sort === s ? "text-black" : "text-gray-300"}`}>
-              {s === "streak" ? "🔥 ストリーク順" : "🕐 新着順"}
+              {s === "streak" ? t("search.sortByStreak") : t("search.sortByNew")}
             </Text>
           </TouchableOpacity>
         ))}
@@ -137,26 +154,26 @@ export default function SearchScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
         >
-          {PRESET_TAGS.map((tag) => {
-            const active = selectedTags.includes(tag);
+          {TAG_KEYS.map(({ apiValue, i18nKey }) => {
+            const active = selectedApiTags.includes(apiValue);
             return (
               <TouchableOpacity
-                key={tag}
-                onPress={() => toggleTag(tag)}
+                key={apiValue}
+                onPress={() => toggleTag(apiValue)}
                 className={`px-3 py-1.5 rounded-full border ${
                   active ? "bg-white border-white" : "bg-gray-900 border-gray-800"
                 }`}
               >
                 <Text className={`text-xs font-bold ${active ? "text-black" : "text-gray-300"}`}>
-                  #{tag}
+                  #{t(i18nKey)}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
-        {selectedTags.length > 0 && (
-          <TouchableOpacity onPress={() => setSelectedTags([])} className="px-4 pt-1">
-            <Text className="text-xs text-gray-400">タグをリセット ×</Text>
+        {selectedApiTags.length > 0 && (
+          <TouchableOpacity onPress={() => setSelectedApiTags([])} className="px-4 pt-1">
+            <Text className="text-xs text-gray-400">{t("search.resetTags")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -174,7 +191,7 @@ export default function SearchScreen() {
           ListEmptyComponent={
             <View className="items-center py-20">
               <Text className="text-4xl mb-3">🔍</Text>
-              <Text className="text-gray-400 text-sm">ユーザーが見つかりませんでした</Text>
+              <Text className="text-gray-400 text-sm">{t("search.noResults")}</Text>
             </View>
           }
         />

@@ -4,6 +4,11 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      fontSize: {
+        xs:   ["13px", { lineHeight: "18px" }],
+        sm:   ["15px", { lineHeight: "22px" }],
+        base: ["17px", { lineHeight: "26px" }],
+      },
       colors: {
         streak: "#FF6200",
       },

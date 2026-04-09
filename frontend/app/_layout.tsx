@@ -1,4 +1,5 @@
 import "../global.css";
+import "../i18n";
 import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -53,6 +54,7 @@ export default function RootLayout() {
         <Stack.Screen name="follow-list" />
         <Stack.Screen name="post/[id]" />
         <Stack.Screen name="achieve-goal" />
+        <Stack.Screen name="goal/[id]" />
       </Stack>
     </QueryClientProvider>
   );

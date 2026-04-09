@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -26,6 +26,8 @@ def _today_jst_range():
 
 @router.get("", response_model=list[PostOut])
 async def get_feed(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -66,6 +68,7 @@ async def get_feed(
         )
         .where(Post.user_id.in_(target_ids))
         .order_by(Post.created_at.desc())
-        .limit(50)
+        .offset(skip)
+        .limit(limit)
     )
     return list(posts)

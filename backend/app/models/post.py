@@ -3,6 +3,7 @@ import enum
 from datetime import datetime, timezone
 from sqlalchemy import String, DateTime, Enum, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import Optional
 from app.db.session import Base
 
 
@@ -18,6 +19,7 @@ class Post(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    goal_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("goals.id"), nullable=True)
     image_url: Mapped[str] = mapped_column(String, nullable=False)
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[PostStatus] = mapped_column(
@@ -28,6 +30,7 @@ class Post(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="posts")
+    goal: Mapped[Optional["Goal"]] = relationship("Goal", back_populates="posts")
     reactions: Mapped[list["Reaction"]] = relationship("Reaction", back_populates="post")
     comments: Mapped[list["Comment"]] = relationship(
         "Comment", back_populates="post", order_by="Comment.created_at"

@@ -6,7 +6,8 @@ from app.models.reaction import Reaction
 from app.models.post import Post
 from app.models.user import User
 from app.schemas.reaction import ReactionCreate, ReactionOut
-from .users import get_current_user
+from sqlalchemy.orm import selectinload
+from .users import get_current_user, check_can_view
 
 router = APIRouter(tags=["reactions"])
 
@@ -18,9 +19,12 @@ async def toggle_reaction(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    post = await db.scalar(select(Post).where(Post.id == post_id))
+    post = await db.scalar(
+        select(Post).options(selectinload(Post.user)).where(Post.id == post_id)
+    )
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+    await check_can_view(current_user, post.user, db)
 
     # ユーザーのこの投稿への既存リアクションを検索
     existing = await db.scalar(

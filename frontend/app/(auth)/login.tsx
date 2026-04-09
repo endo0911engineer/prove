@@ -10,18 +10,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useLogin, useGoogleAuth } from "../../hooks/useAuth";
 import { GOOGLE_CLIENT_IDS } from "../../constants/google";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const schema = z.object({
-  email: z.string().email("正しいメールアドレスを入力してください"),
-  password: z.string().min(1, "パスワードを入力してください"),
-});
-type FormData = z.infer<typeof schema>;
-
 export default function LoginScreen() {
+  const { t } = useTranslation();
+
+  const schema = z.object({
+    email: z.string().email(t("auth.validEmail")),
+    password: z.string().min(1, t("auth.passwordRequired")),
+  });
+  type FormData = z.infer<typeof schema>;
+
   const { login, loading, error } = useLogin();
   const { loginWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -45,9 +48,17 @@ export default function LoginScreen() {
         <View className="flex-1 justify-center px-7">
           {/* ブランド */}
           <View className="items-center mb-12">
-            <Text className="text-5xl mb-3">🔥</Text>
-            <Text className="text-4xl font-black text-white tracking-tight">prove</Text>
-            <Text className="text-gray-300 text-sm mt-1">努力を証明しよう</Text>
+            <Text
+              className="font-black text-white"
+              style={{ fontSize: 72, letterSpacing: 18, marginLeft: 18 }}
+            >
+              PROVE
+            </Text>
+            <View className="flex-row items-center gap-3 mt-3">
+              <View className="h-px bg-gray-700 w-8" />
+              <Text className="text-gray-500 text-xs tracking-widest uppercase">{t("auth.appTagline")}</Text>
+              <View className="h-px bg-gray-700 w-8" />
+            </View>
           </View>
 
           {anyError && (
@@ -66,7 +77,7 @@ export default function LoginScreen() {
               ? <ActivityIndicator color="#000" />
               : <>
                   <Text className="text-xl">G</Text>
-                  <Text className="text-black font-bold text-base">Googleでログイン</Text>
+                  <Text className="text-black font-bold text-base">{t("auth.googleLogin")}</Text>
                 </>
             }
           </TouchableOpacity>
@@ -74,7 +85,7 @@ export default function LoginScreen() {
           {/* 区切り */}
           <View className="flex-row items-center gap-3 mb-4">
             <View className="flex-1 h-px bg-gray-800" />
-            <Text className="text-gray-500 text-xs">または</Text>
+            <Text className="text-gray-500 text-xs">{t("common.or")}</Text>
             <View className="flex-1 h-px bg-gray-800" />
           </View>
 
@@ -82,7 +93,7 @@ export default function LoginScreen() {
           <View className="gap-4 mb-5">
             <View>
               <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
-                メールアドレス
+                {t("auth.email")}
               </Text>
               <Controller
                 control={control}
@@ -90,7 +101,7 @@ export default function LoginScreen() {
                 render={({ field: { onChange, value } }) => (
                   <TextInput
                     className="bg-gray-900 border border-gray-800 rounded-2xl px-4 py-4 text-base text-white"
-                    placeholder="example@email.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     placeholderTextColor="#555"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -104,7 +115,7 @@ export default function LoginScreen() {
 
             <View>
               <Text className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
-                パスワード
+                {t("auth.password")}
               </Text>
               <Controller
                 control={control}
@@ -112,7 +123,7 @@ export default function LoginScreen() {
                 render={({ field: { onChange, value } }) => (
                   <TextInput
                     className="bg-gray-900 border border-gray-800 rounded-2xl px-4 py-4 text-base text-white"
-                    placeholder="パスワード"
+                    placeholder={t("auth.password")}
                     placeholderTextColor="#555"
                     secureTextEntry
                     onChangeText={onChange}
@@ -131,13 +142,13 @@ export default function LoginScreen() {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text className="text-white font-bold text-base">ログイン</Text>
+              : <Text className="text-white font-bold text-base">{t("auth.login")}</Text>
             }
           </TouchableOpacity>
 
           <TouchableOpacity className="items-center" onPress={() => router.push("/(auth)/register")}>
             <Text className="text-gray-300 text-sm">
-              アカウントがない方は <Text className="text-white font-bold">新規登録</Text>
+              {t("auth.noAccount")} <Text className="text-white font-bold">{t("auth.signUp")}</Text>
             </Text>
           </TouchableOpacity>
         </View>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useTodayStatus } from "../../hooks/usePosts";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 
@@ -10,28 +11,12 @@ function nowJST(): Date {
   return new Date(Date.now() + 9 * 3600 * 1000);
 }
 
-/** 今日のJST hh:00 を UTC の Date で返す */
-function todayJSTHour(hour: number): Date {
-  const jst = nowJST();
-  // UTC日付ベースで今日の JST 0時 を算出
-  const jstMidnight = new Date(
-    Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate())
-  );
-  // JST midnight の UTC = JST midnight - 9h
-  // ただし jst は already offset されているので、UTC midnight = jst midnight - 0
-  // 正確には: JST H:00 = UTC (H-9):00
-  return new Date(jstMidnight.getTime() + (hour - 9) * 3600 * 1000 + 9 * 3600 * 1000);
-}
-
-// より正確な実装:
 function makeJSTDate(hour: number): Date {
   const now = new Date();
-  // JST の today
   const jstNow = new Date(now.getTime() + 9 * 3600 * 1000);
   const y = jstNow.getUTCFullYear();
   const mo = jstNow.getUTCMonth();
   const d = jstNow.getUTCDate();
-  // JST hour:00:00 → UTC
   return new Date(Date.UTC(y, mo, d, hour - 9, 0, 0));
 }
 
@@ -69,6 +54,7 @@ function useCountdown(targetDate: Date | null) {
 }
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { data, isLoading } = useTodayStatus();
   const { data: user } = useCurrentUser();
 
@@ -76,7 +62,6 @@ export default function HomeScreen() {
   const windowEnd = data?.postingWindowEnd ?? 23;
   const windowState = getWindowState(windowStart, windowEnd);
 
-  // カウントダウン対象: open→締め切り時刻、before→開始時刻
   const countdownTarget =
     windowState === "open"
       ? makeJSTDate(windowEnd)
@@ -104,7 +89,6 @@ export default function HomeScreen() {
         {/* ヘッダー */}
         <View className="flex-row items-center justify-between mb-6">
           <View>
-            <Text className="text-xs text-gray-300 mb-0.5">おはよう 👋</Text>
             <Text className="text-2xl font-black text-white">@{user?.username ?? "..."}</Text>
           </View>
           <View className="bg-gray-900 border border-gray-700 rounded-full px-4 py-1.5">
@@ -116,12 +100,12 @@ export default function HomeScreen() {
         <View className="bg-gray-900 border border-gray-800 rounded-3xl p-7 mb-4 flex-row items-center">
           <View className="flex-1">
             <Text className="text-8xl font-black text-white leading-none">{data?.streak ?? 0}</Text>
-            <Text className="text-gray-300 text-base mt-1 font-medium">日連続</Text>
+            <Text className="text-gray-300 text-base mt-1 font-medium">{t("common.dayStreak", { count: "" }).replace("{{count}} ", "")}</Text>
           </View>
           <View className="items-center gap-2 pl-6 border-l border-gray-800">
             <Text className="text-4xl">🔥</Text>
-            <Text className="text-gray-400 text-xs">最大記録</Text>
-            <Text className="text-white font-black text-xl">{data?.maxStreak ?? 0}日</Text>
+            <Text className="text-gray-400 text-xs">{t("home.maxStreak")}</Text>
+            <Text className="text-white font-black text-xl">{data?.maxStreak ?? 0}</Text>
           </View>
         </View>
 
@@ -130,16 +114,16 @@ export default function HomeScreen() {
           <View className="bg-gray-900 border border-green-900 rounded-2xl p-5 mb-4 flex-row items-center gap-4">
             <Text className="text-3xl">✅</Text>
             <View className="flex-1">
-              <Text className="font-bold text-green-400 text-base">今日の記録完了！</Text>
-              <Text className="text-gray-300 text-sm mt-0.5">明日も続けよう。継続は力なり。</Text>
+              <Text className="font-bold text-green-400 text-base">{t("home.postedToday")}</Text>
+              <Text className="text-gray-300 text-sm mt-0.5">{t("home.postedMessage")}</Text>
             </View>
           </View>
         ) : missed ? (
           <View className="bg-gray-900 border border-red-900 rounded-2xl p-5 mb-4 flex-row items-center gap-4">
             <Text className="text-3xl">😞</Text>
             <View className="flex-1">
-              <Text className="font-bold text-red-400 text-base">今日は投稿できませんでした</Text>
-              <Text className="text-gray-300 text-sm mt-0.5">ストリークがリセットされます。明日また頑張ろう。</Text>
+              <Text className="font-bold text-red-400 text-base">{t("home.missedToday")}</Text>
+              <Text className="text-gray-300 text-sm mt-0.5">{t("home.missedMessage")}</Text>
             </View>
           </View>
         ) : windowState === "before" ? (
@@ -147,9 +131,9 @@ export default function HomeScreen() {
             <Text className="text-3xl">🕐</Text>
             <View className="flex-1">
               <Text className="font-bold text-gray-300 text-sm">
-                投稿時間は {windowStart}:00〜{windowEnd}:00
+                {t("home.postingWindowLabel", { start: windowStart, end: windowEnd })}
               </Text>
-              <Text className="text-gray-400 text-xs mt-0.5">開始まで</Text>
+              <Text className="text-gray-400 text-xs mt-0.5">{t("home.beforeWindow")}</Text>
               <Text className="text-white font-black text-2xl mt-1 tracking-widest">{countdown}</Text>
             </View>
           </View>
@@ -158,7 +142,7 @@ export default function HomeScreen() {
             <Text className="text-3xl">⏳</Text>
             <View className="flex-1">
               <Text className="font-bold text-gray-300 text-sm">
-                今日はまだ未投稿（〜{windowEnd}:00まで）
+                {t("home.notPostedYet", { end: windowEnd })}
               </Text>
               <Text className="text-orange-500 font-black text-2xl mt-1 tracking-widest">{countdown}</Text>
             </View>
@@ -172,13 +156,13 @@ export default function HomeScreen() {
             onPress={() => router.push("/(tabs)/post")}
           >
             <Text className="text-2xl">📸</Text>
-            <Text className="text-black font-bold text-base">今日の努力を記録する</Text>
+            <Text className="text-black font-bold text-base">{t("common.recordTodayEffort")}</Text>
           </TouchableOpacity>
         )}
 
         {!posted && !missed && windowState === "before" && (
           <View className="bg-gray-900 border border-gray-800 rounded-2xl py-5 items-center">
-            <Text className="text-gray-400 text-sm">投稿時間になったら記録しよう</Text>
+            <Text className="text-gray-400 text-sm">{t("home.waitForWindow")}</Text>
           </View>
         )}
 
@@ -187,14 +171,14 @@ export default function HomeScreen() {
             className="bg-gray-900 border border-gray-700 rounded-2xl py-4 items-center"
             onPress={() => router.push("/(tabs)/feed")}
           >
-            <Text className="text-gray-300 font-semibold">仲間の投稿を見る →</Text>
+            <Text className="text-gray-300 font-semibold">{t("home.viewFeed")}</Text>
           </TouchableOpacity>
         )}
 
         {missed && (
           <View className="mt-4 items-center">
             <Text className="text-gray-600 text-xs">
-              投稿可能時間: {windowStart}:00〜{windowEnd}:00
+              {t("home.postingWindow", { start: windowStart, end: windowEnd })}
             </Text>
           </View>
         )}

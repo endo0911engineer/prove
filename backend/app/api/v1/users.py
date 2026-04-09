@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -10,10 +10,12 @@ from app.models.user import User
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.follow import Follow
+from app.models.goal import Goal
 from app.schemas.user import UserOut, UserUpdate
 from app.schemas.post import PostOut
 from app.core.security import decode_token
 from app.core.storage import upload_image
+from app.core.file_validation import validate_image_bytes
 
 router = APIRouter(prefix="/users", tags=["users"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
@@ -30,6 +32,22 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+async def check_can_view(viewer: User, target_user: User, db: AsyncSession) -> None:
+    """非公開ユーザーのコンテンツにアクセスできるか確認。不可なら 403 を送出。"""
+    if not target_user.is_private:
+        return
+    if viewer.id == target_user.id:
+        return
+    is_following = await db.scalar(
+        select(Follow).where(
+            Follow.follower_id == viewer.id,
+            Follow.following_id == target_user.id,
+        )
+    )
+    if not is_following:
+        raise HTTPException(status_code=403, detail="This account is private")
 
 
 async def _with_counts(user: User, db: AsyncSession) -> UserOut:
@@ -89,6 +107,7 @@ async def upload_avatar(
     current_user: User = Depends(get_current_user),
 ):
     image_bytes = await image.read()
+    validate_image_bytes(image_bytes)
     avatar_url = upload_image(image_bytes, image.content_type or "image/jpeg")
     current_user.avatar_url = avatar_url
     await db.commit()
@@ -105,7 +124,18 @@ async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{user_id}/posts", response_model=list[PostOut])
-async def get_user_posts(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_user_posts(
+    user_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    target = await db.scalar(select(User).where(User.id == user_id))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    await check_can_view(current_user, target, db)
+
     posts = await db.scalars(
         select(Post)
         .options(
@@ -115,5 +145,7 @@ async def get_user_posts(user_id: str, db: AsyncSession = Depends(get_db)):
         )
         .where(Post.user_id == user_id)
         .order_by(Post.created_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     return list(posts)

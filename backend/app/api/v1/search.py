@@ -16,6 +16,8 @@ async def search_users(
     q: str | None = Query(None),
     tags: list[str] | None = Query(None),
     sort: str = Query("streak"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -36,7 +38,7 @@ async def search_users(
     else:
         query = query.order_by(User.created_at.desc())
 
-    query = query.limit(50)
+    query = query.offset(skip).limit(limit)
     users = await db.scalars(query)
     results = await asyncio.gather(*[_with_counts(u, db) for u in users])
     return list(results)
