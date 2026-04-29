@@ -11,8 +11,7 @@ export const postsApi = {
     status: string;
     streak: number;
     maxStreak: number;
-    postingWindowStart: number;
-    postingWindowEnd: number;
+    timezone: string;
   }> => {
     const res = await apiClient.get("/api/v1/posts/today");
     return res.data;

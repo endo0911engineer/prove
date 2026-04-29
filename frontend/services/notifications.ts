@@ -1,12 +1,10 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-// Expo Go かどうかを判定（SDK 53 以降、Expo Go では Android 通知が使えない）
 const isExpoGo = Constants.executionEnvironment === "storeClient";
 
 let Notifications: typeof import("expo-notifications") | null = null;
 
-// Expo Go + Android では通知モジュール自体を読み込まない
 if (!isExpoGo || Platform.OS === "ios") {
   try {
     Notifications = require("expo-notifications");
@@ -35,12 +33,11 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * 投稿時間に関するローカル通知をスケジュール。
+ * 毎日 reminderHour 時に投稿リマインドをスケジュール。
  * 設定変更・オンボーディング完了・アプリ起動時に呼ぶ。
  */
 export async function schedulePostingNotifications(
-  windowStart: number,
-  windowEnd: number,
+  reminderHour: number,
   enabled: boolean
 ): Promise<void> {
   if (!Notifications) return;
@@ -51,44 +48,14 @@ export async function schedulePostingNotifications(
     const granted = await requestNotificationPermission();
     if (!granted) return;
 
-    // 開始通知
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "🔥 投稿時間が始まりました",
-        body: "今日の努力を記録しよう！",
+        title: "🔥 今日の努力を記録しよう",
+        body: "まだ今日の投稿が完了していません！",
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: windowStart,
-        minute: 0,
-      },
-    });
-
-    // 終了30分前の通知
-    const warningTotalMinutes = windowEnd * 60 - 30;
-    if (warningTotalMinutes > windowStart * 60) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "⏰ 投稿時間終了まであと30分",
-          body: "まだ投稿していない方は今すぐ記録しよう！",
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: Math.floor(warningTotalMinutes / 60),
-          minute: warningTotalMinutes % 60,
-        },
-      });
-    }
-
-    // 終了通知
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "😞 今日の投稿時間が終了しました",
-        body: "明日こそ忘れずに記録しよう。",
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: windowEnd,
+        hour: reminderHour,
         minute: 0,
       },
     });

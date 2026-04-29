@@ -31,8 +31,7 @@ export const authApi = {
   onboarding: async (data: {
     username: string;
     goal: string;
-    postingWindowStart: number;
-    postingWindowEnd: number;
+    timezone: string;
   }): Promise<User> => {
     const res = await apiClient.post<User>("/api/v1/auth/onboarding", data);
     return res.data;

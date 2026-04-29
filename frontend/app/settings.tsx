@@ -26,12 +26,6 @@ export default function SettingsScreen() {
       onPress: () => router.push("/settings-notifications"),
     },
     {
-      icon: "time-outline",
-      label: "投稿可能時間",
-      desc: `${String(user?.postingWindowStart ?? 0).padStart(2, "0")}:00 〜 ${String(user?.postingWindowEnd ?? 23).padStart(2, "0")}:59`,
-      onPress: () => router.push("/settings-post-time"),
-    },
-    {
       icon: "shield-outline",
       label: "プライバシー",
       desc: user?.isPrivate ? "非公開" : "公開",

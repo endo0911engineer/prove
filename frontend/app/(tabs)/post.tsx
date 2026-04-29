@@ -16,7 +16,6 @@ export default function PostScreen() {
   const { mutate: createPost, isPending } = useCreatePost();
   const { data: todayStatus } = useTodayStatus();
   const alreadyPosted = todayStatus?.status === "POSTED";
-  const isMissed = todayStatus?.status === "MISSED";
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -59,10 +58,6 @@ export default function PostScreen() {
         const detail = err?.response?.data?.detail ?? "";
         const msg = detail === "Already posted today"
           ? t("post.alreadyPosted")
-          : detail.includes("hasn't started yet")
-          ? t("post.windowNotStarted", { start: todayStatus?.postingWindowStart ?? 0 })
-          : detail.includes("has closed")
-          ? t("post.windowEnded", { end: todayStatus?.postingWindowEnd ?? 23 })
           : t("post.postFailed");
         Alert.alert(t("common.error"), msg);
       },
@@ -81,19 +76,6 @@ export default function PostScreen() {
         >
           <Text className="text-gray-300 font-medium">{t("post.viewFeed")}</Text>
         </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  if (isMissed) {
-    return (
-      <SafeAreaView className="flex-1 bg-black items-center justify-center px-6">
-        <Text className="text-5xl mb-4">😞</Text>
-        <Text className="text-xl font-bold text-white text-center mb-2">{t("post.endedTitle")}</Text>
-        <Text className="text-gray-300 text-center mb-2">
-          {t("home.postingWindow", { start: todayStatus?.postingWindowStart, end: todayStatus?.postingWindowEnd })}
-        </Text>
-        <Text className="text-gray-400 text-sm text-center mb-8">{t("post.endedMessage")}</Text>
       </SafeAreaView>
     );
   }

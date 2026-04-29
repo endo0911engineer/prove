@@ -1,4 +1,4 @@
-export type PostStatus = "NOT_POSTED" | "POSTED" | "LATE" | "MISSED";
+export type PostStatus = "NOT_POSTED" | "POSTED";
 
 export interface User {
   id: string;
@@ -8,8 +8,8 @@ export interface User {
   avatarUrl: string | null;
   tags: string[];
   notificationEnabled: boolean;
-  postingWindowStart: number;
-  postingWindowEnd: number;
+  timezone: string;
+  reminderHour: number;
   isPrivate: boolean;
   currentStreak: number;
   maxStreak: number;

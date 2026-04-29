@@ -6,36 +6,15 @@ import { useTranslation } from "react-i18next";
 import { useTodayStatus } from "../../hooks/usePosts";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 
-/** JST現在時刻を返す */
-function nowJST(): Date {
-  return new Date(Date.now() + 9 * 3600 * 1000);
-}
-
-function makeJSTDate(hour: number): Date {
+function getLocalMidnight(): Date {
   const now = new Date();
-  const jstNow = new Date(now.getTime() + 9 * 3600 * 1000);
-  const y = jstNow.getUTCFullYear();
-  const mo = jstNow.getUTCMonth();
-  const d = jstNow.getUTCDate();
-  return new Date(Date.UTC(y, mo, d, hour - 9, 0, 0));
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
 }
 
-type WindowState = "before" | "open" | "closed";
-
-function getWindowState(windowStart: number, windowEnd: number): WindowState {
-  const now = new Date();
-  const start = makeJSTDate(windowStart);
-  const end = makeJSTDate(windowEnd);
-  if (now < start) return "before";
-  if (now > end) return "closed";
-  return "open";
-}
-
-function useCountdown(targetDate: Date | null) {
+function useCountdown(targetDate: Date) {
   const [remaining, setRemaining] = useState("");
 
   useEffect(() => {
-    if (!targetDate) return;
     const tick = () => {
       const diff = Math.max(0, targetDate.getTime() - Date.now());
       const h = Math.floor(diff / 3600000);
@@ -48,7 +27,7 @@ function useCountdown(targetDate: Date | null) {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [targetDate?.getTime()]);
+  }, [targetDate.getTime()]);
 
   return remaining;
 }
@@ -57,22 +36,10 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const { data, isLoading } = useTodayStatus();
   const { data: user } = useCurrentUser();
-
-  const windowStart = data?.postingWindowStart ?? 0;
-  const windowEnd = data?.postingWindowEnd ?? 23;
-  const windowState = getWindowState(windowStart, windowEnd);
-
-  const countdownTarget =
-    windowState === "open"
-      ? makeJSTDate(windowEnd)
-      : windowState === "before"
-      ? makeJSTDate(windowStart)
-      : null;
-
-  const countdown = useCountdown(countdownTarget);
+  const midnight = getLocalMidnight();
+  const countdown = useCountdown(midnight);
 
   const posted = data?.status === "POSTED";
-  const missed = data?.status === "MISSED";
 
   if (isLoading) {
     return (
@@ -118,39 +85,18 @@ export default function HomeScreen() {
               <Text className="text-gray-300 text-sm mt-0.5">{t("home.postedMessage")}</Text>
             </View>
           </View>
-        ) : missed ? (
-          <View className="bg-gray-900 border border-red-900 rounded-2xl p-5 mb-4 flex-row items-center gap-4">
-            <Text className="text-3xl">😞</Text>
-            <View className="flex-1">
-              <Text className="font-bold text-red-400 text-base">{t("home.missedToday")}</Text>
-              <Text className="text-gray-300 text-sm mt-0.5">{t("home.missedMessage")}</Text>
-            </View>
-          </View>
-        ) : windowState === "before" ? (
-          <View className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4 flex-row items-center gap-4">
-            <Text className="text-3xl">🕐</Text>
-            <View className="flex-1">
-              <Text className="font-bold text-gray-300 text-sm">
-                {t("home.postingWindowLabel", { start: windowStart, end: windowEnd })}
-              </Text>
-              <Text className="text-gray-400 text-xs mt-0.5">{t("home.beforeWindow")}</Text>
-              <Text className="text-white font-black text-2xl mt-1 tracking-widest">{countdown}</Text>
-            </View>
-          </View>
         ) : (
           <View className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4 flex-row items-center gap-4">
             <Text className="text-3xl">⏳</Text>
             <View className="flex-1">
-              <Text className="font-bold text-gray-300 text-sm">
-                {t("home.notPostedYet", { end: windowEnd })}
-              </Text>
+              <Text className="font-bold text-gray-300 text-sm">{t("home.notPostedYet")}</Text>
               <Text className="text-orange-500 font-black text-2xl mt-1 tracking-widest">{countdown}</Text>
             </View>
           </View>
         )}
 
         {/* CTA */}
-        {!posted && !missed && windowState === "open" && (
+        {!posted && (
           <TouchableOpacity
             className="bg-white rounded-2xl py-5 flex-row items-center justify-center gap-3"
             onPress={() => router.push("/(tabs)/post")}
@@ -160,12 +106,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
-        {!posted && !missed && windowState === "before" && (
-          <View className="bg-gray-900 border border-gray-800 rounded-2xl py-5 items-center">
-            <Text className="text-gray-400 text-sm">{t("home.waitForWindow")}</Text>
-          </View>
-        )}
-
         {posted && (
           <TouchableOpacity
             className="bg-gray-900 border border-gray-700 rounded-2xl py-4 items-center"
@@ -173,14 +113,6 @@ export default function HomeScreen() {
           >
             <Text className="text-gray-300 font-semibold">{t("home.viewFeed")}</Text>
           </TouchableOpacity>
-        )}
-
-        {missed && (
-          <View className="mt-4 items-center">
-            <Text className="text-gray-600 text-xs">
-              {t("home.postingWindow", { start: windowStart, end: windowEnd })}
-            </Text>
-          </View>
         )}
       </View>
     </SafeAreaView>

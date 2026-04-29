@@ -107,20 +107,14 @@ export function useOnboarding() {
   const complete = async (data: {
     username: string;
     goal: string;
-    postingWindowStart: number;
-    postingWindowEnd: number;
+    timezone: string;
   }) => {
     setLoading(true);
     setError(null);
     try {
       const user = await authApi.onboarding(data);
       setUser(user);
-      // 投稿時間通知をスケジュール
-      await schedulePostingNotifications(
-        data.postingWindowStart,
-        data.postingWindowEnd,
-        true
-      );
+      await schedulePostingNotifications(21, true);
       router.replace("/(tabs)");
     } catch (e: any) {
       const detail = e?.response?.data?.detail;

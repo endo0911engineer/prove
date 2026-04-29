@@ -33,16 +33,16 @@ class TestUpdateProfile:
         assert resp.status_code == 200
         assert resp.json()["bio"] == "新しいbioです"
 
-    async def test_update_posting_window(self, client: AsyncClient, user_a: dict):
+    async def test_update_timezone_and_reminder(self, client: AsyncClient, user_a: dict):
         resp = await client.patch(
             "/api/v1/users/me",
-            json={"posting_window_start": 7, "posting_window_end": 22},
+            json={"timezone": "America/New_York", "reminder_hour": 20},
             headers={"Authorization": f"Bearer {user_a['token']}"},
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["posting_window_start"] == 7
-        assert data["posting_window_end"] == 22
+        assert data["timezone"] == "America/New_York"
+        assert data["reminder_hour"] == 20
 
     async def test_update_notification_enabled(self, client: AsyncClient, user_a: dict):
         resp = await client.patch(

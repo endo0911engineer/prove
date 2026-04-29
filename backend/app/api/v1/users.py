@@ -119,10 +119,10 @@ async def update_profile(
         current_user.tags = data.tags
     if data.notification_enabled is not None:
         current_user.notification_enabled = data.notification_enabled
-    if data.posting_window_start is not None:
-        current_user.posting_window_start = data.posting_window_start
-    if data.posting_window_end is not None:
-        current_user.posting_window_end = data.posting_window_end
+    if data.timezone is not None:
+        current_user.timezone = data.timezone
+    if data.reminder_hour is not None:
+        current_user.reminder_hour = data.reminder_hour
     if data.is_private is not None:
         current_user.is_private = data.is_private
     await db.commit()

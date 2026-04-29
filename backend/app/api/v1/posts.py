@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.db.session import get_db
 from app.models.post import Post, PostStatus
@@ -17,31 +18,19 @@ from .users import get_current_user, check_can_view
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
-JST = timezone(timedelta(hours=9))
+
+def _user_tz(user: User) -> ZoneInfo:
+    try:
+        return ZoneInfo(user.timezone)
+    except (ZoneInfoNotFoundError, Exception):
+        return ZoneInfo("Asia/Tokyo")
 
 
-def today_range_jst() -> tuple[datetime, datetime]:
-    """今日(JST)の開始〜終了(UTC)を返す"""
-    today = datetime.now(JST).date()
-    start = datetime(today.year, today.month, today.day, tzinfo=JST)
+def today_range_for_user(user: User) -> tuple[datetime, datetime]:
+    tz = _user_tz(user)
+    today = datetime.now(tz).date()
+    start = datetime(today.year, today.month, today.day, tzinfo=tz)
     return start, start + timedelta(days=1)
-
-
-def window_range_jst(user: User) -> tuple[datetime, datetime]:
-    """ユーザーの投稿可能ウィンドウ(JST)の開始〜終了(UTC)を返す"""
-    today = datetime.now(JST).date()
-    window_start = datetime(
-        today.year, today.month, today.day,
-        user.posting_window_start, 0, 0, tzinfo=JST
-    )
-    window_end = datetime(
-        today.year, today.month, today.day,
-        user.posting_window_end, 0, 0, tzinfo=JST
-    )
-    # 終了が開始より早い場合(例: 23時→翌1時)は翌日扱い
-    if window_end <= window_start:
-        window_end += timedelta(days=1)
-    return window_start, window_end
 
 
 @router.get("/today")
@@ -49,8 +38,7 @@ async def today_status(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    day_start, day_end = today_range_jst()
-    now_jst = datetime.now(JST)
+    day_start, day_end = today_range_for_user(current_user)
 
     post = await db.scalar(
         select(Post)
@@ -59,22 +47,13 @@ async def today_status(
         .where(Post.created_at < day_end)
     )
 
-    if post:
-        status = PostStatus.POSTED
-    else:
-        window_start, window_end = window_range_jst(current_user)
-        if now_jst > window_end:
-            # 投稿ウィンドウが終了しているのに未投稿 → MISSED
-            status = PostStatus.MISSED
-        else:
-            status = PostStatus.NOT_POSTED
+    status = PostStatus.POSTED if post else PostStatus.NOT_POSTED
 
     return {
         "status": status,
         "streak": current_user.current_streak,
         "max_streak": current_user.max_streak,
-        "posting_window_start": current_user.posting_window_start,
-        "posting_window_end": current_user.posting_window_end,
+        "timezone": current_user.timezone,
     }
 
 
@@ -87,23 +66,8 @@ async def create_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    now_jst = datetime.now(JST)
-    day_start, day_end = today_range_jst()
-    window_start, window_end = window_range_jst(current_user)
+    day_start, day_end = today_range_for_user(current_user)
 
-    # 投稿ウィンドウ外はブロック
-    if now_jst < window_start:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Posting window hasn't started yet. Opens at {current_user.posting_window_start}:00"
-        )
-    if now_jst > window_end:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Posting window has closed. It ended at {current_user.posting_window_end}:00"
-        )
-
-    # 1日1投稿チェック
     existing = await db.scalar(
         select(Post)
         .where(Post.user_id == current_user.id)
@@ -117,7 +81,6 @@ async def create_post(
     validate_image_bytes(image_bytes)
     image_url = upload_image(image_bytes, image.content_type or "image/jpeg")
 
-    # アクティブなGoalを取得
     active_goal = await db.scalar(
         select(Goal).where(Goal.user_id == current_user.id, Goal.is_active == True)
     )
@@ -131,7 +94,6 @@ async def create_post(
     )
     db.add(post)
 
-    # ストリーク更新
     yesterday_start = day_start - timedelta(days=1)
     yesterday_post = await db.scalar(
         select(Post)

@@ -15,8 +15,8 @@ class UserUpdate(BaseModel):
     goal: str | None = None
     tags: list[str] | None = None
     notification_enabled: bool | None = None
-    posting_window_start: int | None = None
-    posting_window_end: int | None = None
+    timezone: str | None = None
+    reminder_hour: int | None = None
     is_private: bool | None = None
 
 
@@ -28,8 +28,8 @@ class UserOut(BaseModel):
     avatar_url: str | None = None
     tags: list[str] = []
     notification_enabled: bool = True
-    posting_window_start: int = 0
-    posting_window_end: int = 23
+    timezone: str = "Asia/Tokyo"
+    reminder_hour: int = 21
     is_private: bool = False
     current_streak: int
     max_streak: int

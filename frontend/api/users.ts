@@ -12,8 +12,8 @@ export const usersApi = {
     goal?: string;
     tags?: string[];
     notificationEnabled?: boolean;
-    postingWindowStart?: number;
-    postingWindowEnd?: number;
+    timezone?: string;
+    reminderHour?: number;
     isPrivate?: boolean;
   }): Promise<User> => {
     const res = await apiClient.patch<User>("/api/v1/users/me", data);

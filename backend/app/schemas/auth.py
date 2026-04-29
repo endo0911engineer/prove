@@ -19,5 +19,4 @@ class GoogleAuthRequest(BaseModel):
 class OnboardingRequest(BaseModel):
     username: str
     goal: str
-    posting_window_start: int = 0
-    posting_window_end: int = 23
+    timezone: str = "Asia/Tokyo"

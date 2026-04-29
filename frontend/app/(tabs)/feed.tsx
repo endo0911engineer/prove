@@ -9,7 +9,7 @@ import { Post } from "../../types";
 export default function FeedScreen() {
   const { t } = useTranslation();
   const { data: todayStatus } = useTodayStatus();
-  const posted = todayStatus?.status === "POSTED" || todayStatus?.status === "LATE";
+  const posted = todayStatus?.status === "POSTED";
 
   const {
     data,

@@ -153,8 +153,7 @@ async def complete_onboarding(
 
     current_user.username = username
     current_user.goal = goal
-    current_user.posting_window_start = body.posting_window_start
-    current_user.posting_window_end = body.posting_window_end
+    current_user.timezone = body.timezone
     current_user.is_onboarding_complete = True
 
     new_goal = Goal(user_id=current_user.id, title=goal, is_active=True)

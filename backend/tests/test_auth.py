@@ -101,8 +101,7 @@ class TestOnboarding:
             json={
                 "username": "myusername",
                 "goal": "毎日筋トレをする",
-                "posting_window_start": 6,
-                "posting_window_end": 22,
+                "timezone": "Asia/Tokyo",
             },
             headers={"Authorization": f"Bearer {tokens['access_token']}"},
         )
@@ -110,8 +109,7 @@ class TestOnboarding:
         data = resp.json()
         assert data["username"] == "myusername"
         assert data["goal"] == "毎日筋トレをする"
-        assert data["posting_window_start"] == 6
-        assert data["posting_window_end"] == 22
+        assert data["timezone"] == "Asia/Tokyo"
 
     async def test_duplicate_username(self, client: AsyncClient):
         tokens1 = await register(client, "user1@test.com")
@@ -123,8 +121,7 @@ class TestOnboarding:
             json={
                 "username": "taken_name",
                 "goal": "目標",
-                "posting_window_start": 0,
-                "posting_window_end": 23,
+                "timezone": "Asia/Tokyo",
             },
             headers={"Authorization": f"Bearer {tokens2['access_token']}"},
         )
@@ -134,7 +131,7 @@ class TestOnboarding:
     async def test_requires_auth(self, client: AsyncClient):
         resp = await client.post(
             "/api/v1/auth/onboarding",
-            json={"username": "x", "goal": "y", "posting_window_start": 0, "posting_window_end": 23},
+            json={"username": "x", "goal": "y"},
         )
         assert resp.status_code == 401
 
@@ -142,7 +139,7 @@ class TestOnboarding:
         tokens = await register(client)
         resp = await client.post(
             "/api/v1/auth/onboarding",
-            json={"username": "", "goal": "goal", "posting_window_start": 0, "posting_window_end": 23},
+            json={"username": "", "goal": "goal"},
             headers={"Authorization": f"Bearer {tokens['access_token']}"},
         )
         assert resp.status_code == 400

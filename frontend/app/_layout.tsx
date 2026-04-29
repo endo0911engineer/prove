@@ -23,8 +23,7 @@ function NotificationScheduler() {
         const me = await authApi.me();
         if (me && (me as any).isOnboardingComplete) {
           await schedulePostingNotifications(
-            (me as any).postingWindowStart ?? 0,
-            (me as any).postingWindowEnd ?? 23,
+            (me as any).reminderHour ?? 21,
             (me as any).notificationEnabled ?? true
           );
         }
@@ -49,7 +48,6 @@ export default function RootLayout() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="edit-profile" />
         <Stack.Screen name="settings-notifications" />
-        <Stack.Screen name="settings-post-time" />
         <Stack.Screen name="settings-privacy" />
         <Stack.Screen name="follow-list" />
         <Stack.Screen name="post/[id]" />
